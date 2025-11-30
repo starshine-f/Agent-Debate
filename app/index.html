@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>智能体辩论赛</title>
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --sidebar-bg: #ffffff;
+      --card-border: #e3e5ec;
+      --primary: #3b82f6;
+      --primary-soft: #e1efff;
+      --danger: #ef4444;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --bubble-aff: #dcfce7;
+      --bubble-neg: #fee2e2;
+      --bubble-judge: #e0f2fe;
+      --bubble-human: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+
+    html {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at top left, #e0f2fe 0, #f5f7fb 40%, #fff);
+      color: var(--text-main);
+    }
+    .app-root {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .top-bar {
+      padding: 8px 16px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: transparent;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(4px);
+    }
+    .logo {
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      font-size: 28px;
+      text-align: center;
+      margin-bottom: 5px;
+      margin-top: 10px;
+    }
+    .mode-switch {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 2px;
+      background: #e5e7eb;
+    }
+    .mode-switch button {
+      border: none;
+      background: transparent;
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .mode-switch button.active {
+      background: #ffffff;
+      color: var(--text-main);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+    }
+
+    .main-layout {
+      flex: 1;
+      display: flex;
+      max-width: 1600px;
+      margin: 10px auto 8px;
+      gap: 16px;
+      padding: 0 12px 8px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .sidebar {
+      flex: 0.9 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .sidebar::-webkit-scrollbar {
+      display: none;
+    }
+    .chat-panel {
+      flex: 1.1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      overflow: hidden;
+    }
+
+    .card {
+      background: var(--sidebar-bg);
+      border-radius: 16px;
+      padding: 8px 8px 4px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      margin: 3px 0;
+      font-size: 13px;
+    }
+    .field span {
+      margin-bottom: 2px;
+      color: var(--text-muted);
+    }
+    .field input,
+    .field select,
+    .field textarea {
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      padding: 4px 6px;
+      font-size: 13px;
+      outline: none;
+      transition: border 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+    }
+    .field textarea {
+      resize: vertical;
+    }
+
+    .role-row-group {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .role-row-group .role-row {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .role-row {
+      border-radius: 10px;
+      padding: 4px 4px 2px;
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+      margin-bottom: 2px;
+    }
+    .role-row.clickable {
+      cursor: pointer;
+    }
+    .role-row.selected {
+      border-style: solid;
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.04);
+    }
+    .role-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 3px;
+    }
+    .avatar-small {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      object-fit: cover;
+    }
+    .tag {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+    .fixed-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      padding: 4px 0;
+    }
+    .primary-btn {
+      border: none;
+      background: var(--primary);
+      color: white;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3);
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out,
+        opacity 0.12s;
+    }
+    .primary-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+    }
+    .primary-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+      box-shadow: none;
+    }
+    .primary-btn.full {
+      width: 100%;
+      margin-top: 6px;
+    }
+    .hint-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .error-text {
+      color: var(--danger);
+    }
+    .toggle-group {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 2px;
+      background: #e5e7eb;
+      margin-top: 4px;
+    }
+    .toggle-group button {
+      border: none;
+      background: transparent;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .toggle-group button.active {
+      background: #ffffff;
+      color: var(--text-main);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+    }
+
+    .chat-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      font-size: 14px;
+      font-weight: 500;
+      background: linear-gradient(to right, #f9fafb, #eff6ff);
+    }
+    .chat-body {
+      flex: 1;
+      padding: 10px 10px 6px;
+      overflow-y: auto;
+      background: radial-gradient(circle at top left, #eff6ff 0, #ffffff 35%);
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .chat-body::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chat-row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .chat-row.left {
+      justify-content: flex-start;
+    }
+    .chat-row.right {
+      justify-content: flex-end;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      object-fit: cover;
+      margin: 0 6px;
+      box-shadow: 0 2px 4px rgba(15, 23, 42, 0.25);
+    }
+    .bubble {
+      max-width: 80%;
+      border-radius: 16px;
+      padding: 6px 10px 8px;
+      font-size: 13px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+      white-space: pre-wrap;
+      line-height: 1.5;
+      background: #f3f4f6;
+    }
+    .bubble-role {
+      font-size: 11px;
+      margin-bottom: 2px;
+      color: var(--text-muted);
+    }
+    .bubble-text {
+      font-size: 13px;
+    }
+    .bubble.aff { background: var(--bubble-aff); }
+    .bubble.neg { background: var(--bubble-neg); }
+    .bubble.judge { background: var(--bubble-judge); }
+    .bubble.human { background: var(--bubble-human); }
+    .bubble.ai { background: #e0f2fe; }
+
+    .chat-input-bar {
+      border-top: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 8px 10px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #fafafa;
+    }
+    .chat-input-bar textarea {
+      flex: 1;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      padding: 6px 8px;
+      font-size: 13px;
+      resize: none;
+      outline: none;
+    }
+    .chat-input-bar textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+    }
+    .chat-footer-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 4px 10px 8px;
+    }
+
+    .typing-bubble {
+      min-width: 42px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #e5e7eb;
+      display: inline-flex;
+      gap: 4px;
+      justify-content: center;
+      align-items: center;
+      margin-left: 40px;
+      margin-bottom: 6px;
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #9ca3af;
+      animation: typing 1.2s infinite ease-in-out;
+    }
+    .dot:nth-child(2) { animation-delay: 0.15s; }
+    .dot:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes typing {
+      0%,80%,100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-2px); opacity: 1; }
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .main-layout { flex-direction: column; }
+      .sidebar { width: 100%; order: 2; }
+      .chat-panel { order: 1; }
+      .role-row-group {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="app-root">
+  <header class="top-bar">
+    <div class="logo">多智能体辩论赛</div>
+    <div class="mode-switch">
+      <button id="btn-mode-ai" class="active">AI vs AI</button>
+      <button id="btn-mode-human">人 vs AI</button>
+    </div>
+  </header>
+
+  <main class="main-layout">
+    <aside class="sidebar">
+
+      <!-- 第一行：辩题 + 轮数 + 裁判 -->
+      <div class="card">
+        <div class="card-title">辩题与裁判</div>
+        <label class="field">
+          <span>辩题</span>
+          <textarea
+            id="topic-input"
+            rows="2"
+            placeholder="请输入本场辩题，如：人工智能会更多帮助人类，而不是取代人类工作"></textarea>
+        </label>
+        <label class="field" id="rounds-field">
+          <span>驳论轮数</span>
+          <input id="rounds-input" type="number" min="1" max="10" value="2" />
+        </label>
+
+        <label class="field">
+          <span>裁判模型</span>
+          <select id="judge-model" data-select="model"></select>
+        </label>
+        <div class="field">
+          <span>裁判人格</span>
+          <div class="fixed-text">中立裁判型（固定）</div>
+        </div>
+      </div>
+
+      <div class="card" id="config-loading">
+        <div class="card-title">加载配置中…</div>
+        <div class="hint-text">正在加载可用模型和预设人格，请稍候。</div>
+      </div>
+
+      <div class="card hidden" id="config-error">
+        <div class="card-title">配置加载失败</div>
+        <div class="hint-text error-text" id="config-error-text"></div>
+      </div>
+
+      <!-- AI vs AI 模式配置 -->
+      <div id="config-ai" class="hidden">
+
+        <!-- 第二行：正方（4 个框一行） -->
+        <div class="card">
+          <div class="card-title">正方辩手（4 人）</div>
+
+          <div class="role-row-group">
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-aff1" src="/static/bot.png" class="avatar-small" alt="正方一辩" />
+                <span>正方一辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="aff1-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="aff1-persona" data-select="persona" data-default-persona="calm_logical"></select>
+              </label>
+            </div>
+
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-aff2" src="/static/bot.png" class="avatar-small" alt="正方二辩" />
+                <span>正方二辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="aff2-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="aff2-persona" data-select="persona" data-default-persona="sharp_attacker"></select>
+              </label>
+            </div>
+
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-aff3" src="/static/bot.png" class="avatar-small" alt="正方三辩" />
+                <span>正方三辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="aff3-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="aff3-persona" data-select="persona" data-default-persona="humorous"></select>
+              </label>
+            </div>
+
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-aff4" src="/static/bot.png" class="avatar-small" alt="正方四辩" />
+                <span>正方四辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="aff4-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="aff4-persona" data-select="persona" data-default-persona="emotional"></select>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 第三行：反方（4 个框一行） -->
+        <div class="card">
+          <div class="card-title">反方辩手（4 人）</div>
+
+          <div class="role-row-group">
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-neg1" src="/static/bot.png" class="avatar-small" alt="反方一辩" />
+                <span>反方一辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="neg1-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="neg1-persona" data-select="persona" data-default-persona="philosophical"></select>
+              </label>
+            </div>
+
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-neg2" src="/static/bot.png" class="avatar-small" alt="反方二辩" />
+                <span>反方二辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="neg2-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="neg2-persona" data-select="persona" data-default-persona="data_driven"></select>
+              </label>
+            </div>
+
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-neg3" src="/static/bot.png" class="avatar-small" alt="反方三辩" />
+                <span>反方三辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="neg3-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="neg3-persona" data-select="persona" data-default-persona="calm_logical"></select>
+              </label>
+            </div>
+
+            <div class="role-row">
+              <div class="role-header">
+                <img id="avatar-neg4" src="/static/bot.png" class="avatar-small" alt="反方四辩" />
+                <span>反方四辩</span>
+              </div>
+              <label class="field">
+                <span>模型</span>
+                <select id="neg4-model" data-select="model"></select>
+              </label>
+              <label class="field">
+                <span>人格</span>
+                <select id="neg4-persona" data-select="persona" data-default-persona="calm_logical"></select>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-start-debate" class="primary-btn full">开始辩论</button>
+        <div id="ai-error" class="hint-text error-text"></div>
+      </div>
+
+      <!-- 人 vs AI 模式配置 -->
+      <div id="config-human" class="hidden">
+        <div class="card">
+          <div class="card-title">你的立场</div>
+          <div class="toggle-group">
+            <button id="btn-human-aff" class="active">我是正方</button>
+            <button id="btn-human-neg">我是反方</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">AI 辩手（4 个可切换）</div>
+
+          <div class="role-row clickable bot-card" data-bot-id="bot1">
+            <div class="role-header">
+              <img id="avatar-bot1" src="/static/bot.png" class="avatar-small" alt="AI 一辩" />
+              <span>AI 一辩</span>
+              <span class="tag" data-bot-tag="bot1">当前对话</span>
+            </div>
+            <label class="field">
+              <span>模型</span>
+              <select id="bot1-model" data-select="model"></select>
+            </label>
+            <label class="field">
+              <span>人格</span>
+              <select id="bot1-persona" data-select="persona" data-default-persona="calm_logical"></select>
+            </label>
+          </div>
+
+          <div class="role-row clickable bot-card" data-bot-id="bot2">
+            <div class="role-header">
+              <img id="avatar-bot2" src="/static/bot.png" class="avatar-small" alt="AI 二辩" />
+              <span>AI 二辩</span>
+              <span class="tag hidden" data-bot-tag="bot2">当前对话</span>
+            </div>
+            <label class="field">
+              <span>模型</span>
+              <select id="bot2-model" data-select="model"></select>
+            </label>
+            <label class="field">
+              <span>人格</span>
+              <select id="bot2-persona" data-select="persona" data-default-persona="sharp_attacker"></select>
+            </label>
+          </div>
+
+          <div class="role-row clickable bot-card" data-bot-id="bot3">
+            <div class="role-header">
+              <img id="avatar-bot3" src="/static/bot.png" class="avatar-small" alt="AI 三辩" />
+              <span>AI 三辩</span>
+              <span class="tag hidden" data-bot-tag="bot3">当前对话</span>
+            </div>
+            <label class="field">
+              <span>模型</span>
+              <select id="bot3-model" data-select="model"></select>
+            </label>
+            <label class="field">
+              <span>人格</span>
+              <select id="bot3-persona" data-select="persona" data-default-persona="humorous"></select>
+            </label>
+          </div>
+
+          <div class="role-row clickable bot-card" data-bot-id="bot4">
+            <div class="role-header">
+              <img id="avatar-bot4" src="/static/bot.png" class="avatar-small" alt="AI 四辩" />
+              <span>AI 四辩</span>
+              <span class="tag hidden" data-bot-tag="bot4">当前对话</span>
+            </div>
+            <label class="field">
+              <span>模型</span>
+              <select id="bot4-model" data-select="model"></select>
+            </label>
+            <label class="field">
+              <span>人格</span>
+              <select id="bot4-persona" data-select="persona" data-default-persona="emotional"></select>
+            </label>
+          </div>
+        </div>
+
+        <!-- 人 vs AI 按钮 -->
+        <button id="btn-start-human-debate" class="primary-btn full">
+          开始辩论
+        </button>
+        <button id="btn-human-judge" class="primary-btn full">
+          请裁判点评本场辩论
+        </button>
+
+        <div id="human-error" class="hint-text error-text"></div>
+      </div>
+    </aside>
+
+    <section class="chat-panel">
+      <div class="chat-header" id="chat-header">AI vs AI 辩论现场</div>
+      <div class="chat-body" id="chat-body"></div>
+
+      <div id="typing-row" class="hidden">
+        <div class="typing-bubble">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      </div>
+
+      <div class="chat-input-bar hidden" id="chat-input-human">
+        <textarea id="human-input" rows="2" placeholder="输入你的观点或反驳内容…"></textarea>
+        <button id="btn-send-human" class="primary-btn">发送</button>
+      </div>
+      <div class="chat-footer-hint" id="chat-footer-ai">
+        提示：在左侧配置好模型和人格后，点击「开始辩论」即可观看完整辩论过程。
+      </div>
+      <div class="chat-footer-hint hidden" id="chat-footer-human">
+        提示：在左侧选择立场和 AI 辩手，点击「开始辩论」后，在下方输入框中发言与 AI 对话。
+        若想让裁判做出总结和裁决，可以点击「请裁判点评本场辩论」按钮。
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  const API_BASE = ""; // 同源，直接用相对路径
+
+  const MODEL_AVATAR_MAP = {
+    "gpt4.1": "/static/chatgpt.png",
+    "deepseek-chat": "/static/deepseek.png",
+    "deepseek-reasoner": "/static/deepseek.png",
+    "qwen3-max": "/static/tongyiqianwen.png",
+    "kimi-k2-turbo-preview": "/static/kimi.png",
+    "glm-4.5": "/static/bigmodel.png",
+  };
+
+  const SLOT_DEFAULT_AVATAR = {
+    judge: "/static/judge.png",
+    aff1: "/static/bot.png",
+    aff2: "/static/bot.png",
+    aff3: "/static/bot.png",
+    aff4: "/static/bot.png",
+    neg1: "/static/bot.png",
+    neg2: "/static/bot.png",
+    neg3: "/static/bot.png",
+    neg4: "/static/bot.png",
+    bot1: "/static/bot.png",
+    bot2: "/static/bot.png",
+    bot3: "/static/bot.png",
+    bot4: "/static/bot.png",
+  };
+
+  const ROLE_TO_SLOT = {
+    "裁判": "judge",
+    "正方一辩": "aff1",
+    "正方二辩": "aff2",
+    "正方三辩": "aff3",
+    "正方四辩": "aff4",
+    "反方一辩": "neg1",
+    "反方二辩": "neg2",
+    "反方三辩": "neg3",
+    "反方四辩": "neg4",
+  };
+
+  let currentAvatarBySlot = { ...SLOT_DEFAULT_AVATAR };
+
+  let mode = "ai";
+  let models = {};
+  let personas = {};
+
+  // AI vs AI 模式
+  let aiMessages = [];
+  let aiTyping = false;
+  let aiRunning = false;
+
+  // 人 vs AI 模式
+  let humanSide = "aff";
+  const HUMAN_AVATAR = "/static/human.png";
+
+  // 4 个可配置的 AI 辩手槽位（配置用）
+  const bots = {
+    bot1: { id: "bot1", name: "AI 一辩", avatar: currentAvatarBySlot.bot1, history: [], messages: [], typing: false },
+    bot2: { id: "bot2", name: "AI 二辩", avatar: currentAvatarBySlot.bot2, history: [], messages: [], typing: false },
+    bot3: { id: "bot3", name: "AI 三辩", avatar: currentAvatarBySlot.bot3, history: [], messages: [], typing: false },
+    bot4: { id: "bot4", name: "AI 四辩", avatar: currentAvatarBySlot.bot4, history: [], messages: [], typing: false },
+  };
+  let activeBotId = "bot1";
+
+  // 人 vs AI：统一一套聊天记录和历史
+  let humanMessages = [];      // 用来渲染 chat-body
+  let humanHistory = [];       // 发给后端的 {role: "human"|"ai", content}
+  let humanAiTyping = false;   // 是否显示 AI 正在输入
+  let humanDebateStarted = false; // 是否已经点击“开始辩论”
+  let humanAiTurnCount = 0;    // AI 已经说了多少次，用来轮流 1~4 辩
+  const HUMAN_AI_SLOTS = ["bot1", "bot2", "bot3", "bot4"];
+
+  const $ = (id) => document.getElementById(id);
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  // 统一错误弹框
+  function showError(message) {
+    if (!message) return;
+    window.alert(message);
+  }
+
+  function getAvatarForModel(modelId, slot) {
+    if (modelId && MODEL_AVATAR_MAP[modelId]) {
+      return MODEL_AVATAR_MAP[modelId];
+    }
+    return SLOT_DEFAULT_AVATAR[slot] || "/static/judge.png";
+  }
+
+  // 统一更新左侧「当前对话」高亮和 tag
+  function setActiveBot(slotId) {
+    activeBotId = slotId;
+    document.querySelectorAll(".bot-card").forEach((card) => {
+      const id = card.getAttribute("data-bot-id");
+      card.classList.toggle("selected", id === slotId);
+    });
+    ["bot1", "bot2", "bot3", "bot4"].forEach((bid) => {
+      const tag = document.querySelector(`[data-bot-tag="${bid}"]`);
+      if (tag) {
+        tag.classList.toggle("hidden", bid !== slotId);
+      }
+    });
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    $("btn-mode-ai").classList.toggle("active", mode === "ai");
+    $("btn-mode-human").classList.toggle("active", mode === "human");
+    $("config-ai").classList.toggle("hidden", mode !== "ai");
+    $("config-human").classList.toggle("hidden", mode !== "human");
+    $("rounds-field").classList.toggle("hidden", mode !== "ai");
+    $("chat-input-human").classList.toggle("hidden", mode !== "human");
+    $("chat-footer-ai").classList.toggle("hidden", mode !== "ai");
+    $("chat-footer-human").classList.toggle("hidden", mode !== "human");
+    if (mode === "ai") {
+      $("chat-header").textContent = "AI vs AI 辩论现场";
+    } else {
+      const sideLabel = humanSide === "aff" ? "我方：正方" : "我方：反方";
+      $("chat-header").textContent = "人 vs AI 辩论（" + sideLabel + "）";
+    }
+    renderChat();
+  }
+
+  function renderChat() {
+    const body = $("chat-body");
+    body.innerHTML = "";
+
+    const messages = mode === "ai"
+      ? aiMessages
+      : humanMessages;
+
+    messages.forEach((m) => {
+      const row = document.createElement("div");
+      const alignRight =
+        mode === "ai"
+          ? (m.side === "aff")
+          : (m.side === "human");
+      row.className = "chat-row " + (alignRight ? "right" : "left");
+
+      const avatar = document.createElement("img");
+      avatar.src = m.avatar;
+      avatar.alt = m.role;
+      avatar.className = "avatar";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble " + m.side;
+      const roleDiv = document.createElement("div");
+      roleDiv.className = "bubble-role";
+      roleDiv.textContent = m.role;
+      const textDiv = document.createElement("div");
+      textDiv.className = "bubble-text";
+      textDiv.innerHTML = escapeHtml(m.content).replace(/\n/g, "<br>");
+      bubble.appendChild(roleDiv);
+      bubble.appendChild(textDiv);
+
+      if (alignRight) {
+        row.appendChild(bubble);
+        row.appendChild(avatar);
+      } else {
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+      }
+      body.appendChild(row);
+    });
+
+    const typingRow = $("typing-row");
+    typingRow.classList.add("hidden");
+    if (mode === "ai" && aiTyping) {
+      const clone = typingRow.cloneNode(true);
+      clone.id = "";
+      clone.classList.remove("hidden");
+      body.appendChild(clone);
+    } else if (mode === "human" && humanAiTyping) {
+      const clone = typingRow.cloneNode(true);
+      clone.id = "";
+      clone.classList.remove("hidden");
+      body.appendChild(clone);
+    }
+
+    body.scrollTop = body.scrollHeight;
+  }
+
+  async function loadMeta() {
+    $("config-loading").classList.remove("hidden");
+    $("config-error").classList.add("hidden");
+    try {
+      const [modelsRes, personasRes] = await Promise.all([
+        fetch(API_BASE + "/models"),
+        fetch(API_BASE + "/personas"),
+      ]);
+      if (!modelsRes.ok) throw new Error(await modelsRes.text());
+      if (!personasRes.ok) throw new Error(await personasRes.text());
+      models = await modelsRes.json();
+      personas = await personasRes.json();
+      $("config-loading").classList.add("hidden");
+      initSelects();
+      $("config-ai").classList.remove("hidden");
+    } catch (e) {
+      console.error(e);
+      $("config-loading").classList.add("hidden");
+      $("config-error").classList.remove("hidden");
+      const msg = (e && e.message) ? e.message : "加载模型 / 人格预设失败";
+      $("config-error-text").textContent = msg;
+      showError(msg);
+    }
+  }
+
+  function initSelects() {
+    const modelIds = Object.keys(models);
+    const firstModelId = modelIds[0] || "";
+    const modelOptions = modelIds
+      .map((id) => {
+        const m = models[id];
+        return `<option value="${id}">${m.label} (${m.group || m.model})</option>`;
+      })
+      .join("");
+
+    document.querySelectorAll("select[data-select='model']").forEach((sel) => {
+      sel.innerHTML = modelOptions;
+      if (firstModelId) sel.value = firstModelId;
+      handleModelSelectChange(sel);
+      sel.addEventListener("change", () => handleModelSelectChange(sel));
+    });
+
+    if ($("judge-model") && firstModelId) {
+      $("judge-model").value = firstModelId;
+      handleModelSelectChange($("judge-model"));
+    }
+
+    const personaOptions =
+      `<option value="">（默认）</option>` +
+      Object.entries(personas)
+        .map(
+          ([id, p]) =>
+            `<option value="${id}" title="${p.label} — ${p.description}">${p.label}</option>`
+        )
+        .join("");
+    document.querySelectorAll("select[data-select='persona']").forEach((sel) => {
+      sel.innerHTML = personaOptions;
+      const def = sel.getAttribute("data-default-persona");
+      if (def) sel.value = def;
+    });
+  }
+
+  function handleModelSelectChange(sel) {
+    const id = sel.id;
+    const modelId = sel.value;
+    if (!id) return;
+
+    if (id === "judge-model") {
+      const slot = "judge";
+      const avatar = getAvatarForModel(modelId, slot);
+      currentAvatarBySlot[slot] = avatar;
+      return;
+    }
+    if (id.startsWith("aff") || id.startsWith("neg")) {
+      const slot = id.split("-")[0];
+      const avatar = getAvatarForModel(modelId, slot);
+      currentAvatarBySlot[slot] = avatar;
+      const img = $("avatar-" + slot);
+      if (img) img.src = avatar;
+      return;
+    }
+
+    if (id.startsWith("bot")) {
+      const slot = id.split("-")[0];
+      const avatar = getAvatarForModel(modelId, slot);
+      currentAvatarBySlot[slot] = avatar;
+      const img = $("avatar-" + slot);
+      if (img) img.src = avatar;
+      if (bots[slot]) bots[slot].avatar = avatar;
+    }
+  }
+
+  function getTopicAndRounds() {
+    const topic = $("topic-input").value.trim();
+    const rounds = parseInt($("rounds-input").value || "1", 10);
+    return { topic, rounds: isNaN(rounds) ? 1 : rounds };
+  }
+
+  // === AI vs AI 启动 ===
+  async function handleStartDebate() {
+    const { topic, rounds } = getTopicAndRounds();
+    const errDom = $("ai-error");
+    errDom.textContent = "";
+    if (!topic) {
+      const msg = "请先输入辩题";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+    if (!$("judge-model").value) {
+      const msg = "请先选择裁判模型";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+    aiMessages = [];
+    aiRunning = true;
+    aiTyping = true;
+    renderChat();
+
+    const payload = {
+      topic,
+      rounds,
+      agents: {
+        judge: {
+          profile_id: $("judge-model").value,
+          persona_preset_id: "neutral_judge",
+          persona: null,
+        },
+        aff: {
+          first: {
+            profile_id: $("aff1-model").value,
+            persona_preset_id: $("aff1-persona").value || null,
+            persona: null,
+          },
+          second: {
+            profile_id: $("aff2-model").value,
+            persona_preset_id: $("aff2-persona").value || null,
+            persona: null,
+          },
+          third: {
+            profile_id: $("aff3-model").value,
+            persona_preset_id: $("aff3-persona").value || null,
+            persona: null,
+          },
+          fourth: {
+            profile_id: $("aff4-model").value,
+            persona_preset_id: $("aff4-persona").value || null,
+            persona: null,
+          },
+        },
+        neg: {
+          first: {
+            profile_id: $("neg1-model").value,
+            persona_preset_id: $("neg1-persona").value || null,
+            persona: null,
+          },
+          second: {
+            profile_id: $("neg2-model").value,
+            persona_preset_id: $("neg2-persona").value || null,
+            persona: null,
+          },
+          third: {
+            profile_id: $("neg3-model").value,
+            persona_preset_id: $("neg3-persona").value || null,
+            persona: null,
+          },
+          fourth: {
+            profile_id: $("neg4-model").value,
+            persona_preset_id: $("neg4-persona").value || null,
+            persona: null,
+          },
+        },
+      },
+    };
+
+    try {
+      const res = await fetch(API_BASE + "/debate/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      if (!res.body) {
+        throw new Error("当前浏览器不支持流式响应");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          let data;
+          try {
+            data = JSON.parse(trimmed);
+          } catch (e) {
+            console.error("JSON 解析失败:", trimmed, e);
+            continue;
+          }
+
+          if (data.type === "end") {
+            aiTyping = false;
+            aiRunning = false;
+            renderChat();
+            return;
+          }
+
+          if (data.type === "error") {
+            const msg = data.detail || "服务端错误";
+            errDom.textContent = msg;
+            showError(msg);
+            aiTyping = false;
+            aiRunning = false;
+            renderChat();
+            return;
+          }
+
+          if (data.type === "message") {
+            const role = data.role;
+            const side = data.side || "judge";
+
+            const slot = ROLE_TO_SLOT[role];
+            const avatar = slot
+              ? (currentAvatarBySlot[slot] || SLOT_DEFAULT_AVATAR[slot])
+              : SLOT_DEFAULT_AVATAR.judge;
+
+            aiMessages.push({
+              role,
+              content: data.content,
+              side,
+              avatar,
+            });
+
+            renderChat();
+          }
+        }
+      }
+
+      aiTyping = false;
+      aiRunning = false;
+      renderChat();
+    } catch (e) {
+      console.error(e);
+      const msg = (e && e.message) ? e.message : "启动辩论失败";
+      errDom.textContent = msg;
+      showError(msg);
+      aiTyping = false;
+      aiRunning = false;
+      renderChat();
+    }
+  }
+
+  // === 人 vs AI：点击“开始辩论” ===
+  async function handleStartHumanDebate() {
+    const topic = $("topic-input").value.trim();
+    const errDom = $("human-error");
+    errDom.textContent = "";
+
+    if (!topic) {
+      const msg = "请先输入辩题";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+    if (!$("judge-model").value) {
+      const msg = "请先选择裁判模型";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+
+    // 重置整场人 vs AI 辩论的状态
+    humanMessages = [];
+    humanHistory = [];
+    humanDebateStarted = true;
+    humanAiTyping = false;
+
+    // 从当前选中的 bot 开始轮换（也可以固定从 bot1 开始）
+    humanAiTurnCount = HUMAN_AI_SLOTS.indexOf(activeBotId);
+    if (humanAiTurnCount < 0) humanAiTurnCount = 0;
+
+    const judgeAvatar =
+      currentAvatarBySlot.judge || SLOT_DEFAULT_AVATAR.judge;
+
+    const sideTextHuman = humanSide === "aff" ? "正方" : "反方";
+    const sideTextAi = humanSide === "aff" ? "反方" : "正方";
+
+    const intro = [
+      `本场辩题为：“${topic}”。`,
+      `你将代表【${sideTextHuman}】，AI 队伍代表【${sideTextAi}】。`,
+      "请双方围绕辩题，给出清晰、有逻辑、有例证的观点与反驳。"
+    ].join("\n");
+
+    humanMessages.push({
+      role: "裁判",
+      content: intro,
+      side: "judge",
+      avatar: judgeAvatar,
+    });
+
+    if (humanSide === "aff") {
+      // 人类是正方：等人先说
+      humanMessages.push({
+        role: "裁判",
+        content: "现在请正方（你）先进行立论陈词，随后由 AI 辩手依次发言与反驳。",
+        side: "judge",
+        avatar: judgeAvatar,
+      });
+      renderChat();
+      $("human-input").focus();
+    } else {
+      // 人类是反方：AI 正方先发言
+      humanMessages.push({
+        role: "裁判",
+        content: "本场由 AI 正方一辩先发言，之后由你作为反方进行回应。",
+        side: "judge",
+        avatar: judgeAvatar,
+      });
+      humanAiTyping = true;
+      renderChat();
+      try {
+        await requestAiReply();
+      } catch (e) {
+        console.error(e);
+        const msg = (e && e.message) ? e.message : "AI 开场失败";
+        errDom.textContent = msg;
+        showError(msg);
+        humanAiTyping = false;
+        renderChat();
+      }
+    }
+  }
+
+  // 人 vs AI：当前该 AI 说话一次，并按 1~4 辩轮流切换
+  async function requestAiReply() {
+    const topic = $("topic-input").value.trim();
+
+    const slotIndex = humanAiTurnCount % HUMAN_AI_SLOTS.length;
+    const slotId = HUMAN_AI_SLOTS[slotIndex];
+
+    const modelSel = $(slotId + "-model");
+    const personaSel = $(slotId + "-persona");
+
+    if (!modelSel) {
+      throw new Error("未找到 AI 模型配置：" + slotId);
+    }
+
+    const numerals = ["一", "二", "三", "四"];
+    const aiSideLabel = humanSide === "aff" ? "反方" : "正方";
+    const aiSide = humanSide === "aff" ? "neg" : "aff";
+    const aiRole = `${aiSideLabel}${numerals[slotIndex]}辩`;
+
+    const res = await fetch(API_BASE + "/debate/human-vs-ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topic,
+        human_side: humanSide,             // "aff" / "neg"
+        ai_side: aiSide,                   // AI 所在方："aff" / "neg"
+        ai_role: aiRole,                   // 例如："正方一辩" / "反方三辩"
+        ai_profile_id: modelSel.value,
+        ai_persona_preset_id: (personaSel && personaSel.value) || null,
+        ai_persona: null,
+        history: humanHistory,
+        ai_slot_index: slotIndex,          // 0~3，对应一二三四辩
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(await res.text());
+    }
+
+    const data = await res.json();
+    const aiMsgContent = data.ai_message.content;
+
+    const avatar =
+      currentAvatarBySlot[slotId] || SLOT_DEFAULT_AVATAR[slotId];
+
+    humanHistory.push({ role: "ai", content: aiMsgContent });
+    humanMessages.push({
+      role: data.ai_role || aiRole,
+      content: aiMsgContent,
+      side: "ai",
+      avatar,
+    });
+
+    // 每次 AI 说话完，把左侧「当前对话」切换到这一位
+    setActiveBot(slotId);
+
+    humanAiTurnCount += 1;
+    humanAiTyping = false;
+    renderChat();
+  }
+
+  async function handleSendHuman() {
+    const input = $("human-input");
+    const text = input.value.trim();
+    const errDom = $("human-error");
+    errDom.textContent = "";
+    if (!text) return;
+
+    const topic = $("topic-input").value.trim();
+    if (!topic) {
+      const msg = "请先输入辩题";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+
+    if (!humanDebateStarted) {
+      const msg = "请先点击「开始辩论」";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+
+    const roleSelf = humanSide === "aff" ? "正方（我）" : "反方（我）";
+
+    input.value = "";
+
+    const humanMsg = {
+      role: roleSelf,
+      content: text,
+      side: "human",
+      avatar: HUMAN_AVATAR,
+    };
+
+    humanMessages.push(humanMsg);
+    humanHistory.push({ role: "human", content: text });
+
+    humanAiTyping = true;
+    renderChat();
+
+    try {
+      await requestAiReply();
+    } catch (e) {
+      console.error(e);
+      const msg = (e && e.message) ? e.message : "AI 回复失败";
+      errDom.textContent = msg;
+      showError(msg);
+      humanAiTyping = false;
+      renderChat();
+    }
+  }
+
+  // 人 vs AI：让裁判来一次总结 / 裁决
+  async function handleHumanJudge() {
+    const topic = $("topic-input").value.trim();
+    const errDom = $("human-error");
+    errDom.textContent = "";
+
+    if (!topic) {
+      const msg = "请先输入辩题";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+    if (!humanDebateStarted) {
+      const msg = "请先点击「开始辩论」，并与 AI 至少完成一轮对话";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+    if (!humanHistory.length) {
+      const msg = "还没有人类和 AI 的有效发言，裁判暂时无法点评";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+    if (!$("judge-model").value) {
+      const msg = "请先选择裁判模型";
+      errDom.textContent = msg;
+      showError(msg);
+      return;
+    }
+
+    const judgeAvatar =
+      currentAvatarBySlot.judge || SLOT_DEFAULT_AVATAR.judge;
+
+    humanAiTyping = true;
+    renderChat();
+
+    try {
+      const res = await fetch(API_BASE + "/debate/human-vs-ai/judge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          human_side: humanSide,
+          judge_profile_id: $("judge-model").value,
+          judge_persona_preset_id: "neutral_judge",
+          judge_persona: null,
+          history: humanHistory,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+
+      const data = await res.json();
+      const jmsg = data.judge_message;
+
+      humanMessages.push({
+        role: jmsg.role || "裁判",
+        content: jmsg.content,
+        side: "judge",
+        avatar: judgeAvatar,
+      });
+    } catch (e) {
+      console.error(e);
+      const msg = (e && e.message) ? e.message : "裁判点评失败";
+      errDom.textContent = msg;
+      showError(msg);
+    } finally {
+      humanAiTyping = false;
+      renderChat();
+    }
+  }
+
+  function bindEvents() {
+    $("btn-mode-ai").addEventListener("click", () => setMode("ai"));
+    $("btn-mode-human").addEventListener("click", () => setMode("human"));
+
+    $("btn-start-debate").addEventListener("click", () => {
+      if (aiRunning) return;
+      handleStartDebate();
+    });
+
+    $("btn-start-human-debate").addEventListener("click", () => {
+      handleStartHumanDebate();
+    });
+
+    $("btn-human-judge").addEventListener("click", () => {
+      handleHumanJudge();
+    });
+
+    $("btn-human-aff").addEventListener("click", () => {
+      humanSide = "aff";
+      $("btn-human-aff").classList.add("active");
+      $("btn-human-neg").classList.remove("active");
+      if (mode === "human") {
+        $("chat-header").textContent = "人 vs AI 辩论（我方：正方）";
+      }
+    });
+    $("btn-human-neg").addEventListener("click", () => {
+      humanSide = "neg";
+      $("btn-human-neg").classList.add("active");
+      $("btn-human-aff").classList.remove("active");
+      if (mode === "human") {
+        $("chat-header").textContent = "人 vs AI 辩论（我方：反方）";
+      }
+    });
+
+    document.querySelectorAll(".bot-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const id = card.getAttribute("data-bot-id");
+        if (!id) return;
+        setActiveBot(id);
+
+        if (mode === "human") {
+          const sideLabel = humanSide === "aff" ? "我方：正方" : "我方：反方";
+          $("chat-header").textContent =
+            "人 vs AI 辩论（" + sideLabel + "）";
+        }
+      });
+    });
+
+    // 默认高亮 bot1
+    setActiveBot("bot1");
+
+    $("btn-send-human").addEventListener("click", handleSendHuman);
+    $("human-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleSendHuman();
+      }
+    });
+  }
+
+  bindEvents();
+  setMode("ai");
+  loadMeta();
+})();
+</script>
+</body>
+</html>
