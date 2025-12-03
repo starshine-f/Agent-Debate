@@ -35,13 +35,13 @@
 ├─ requirements.txt
 ├─ README.md
 ├─ .env                           # 存放各种模型的 KEY & BASE_URL
-├─ demo.py                        # 命令行 Demo
 └─ app/
    ├─ __init__.py
    ├─ api.py                      # FastAPI 入口
    ├─ agent.py                    # DebateState / AgentRole / speak_with_role
    ├─ graph.py                    # 辩论流程的 LangGraph FSM
    ├─ config.py                   # 模型 profile & 预设人格
+   ├─ demo.py                     # 命令行 Demo
    ├─ index.html                  # 前端页面
    └─ static/                     # 静态资源：头像等
 ```
