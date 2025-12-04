@@ -82,7 +82,7 @@ Multi-Agent Debate Demo (FastAPI + LangGraph + LangChain OpenAI)
 ```bash
 python -m venv .venv
 # Windows
-# .venv\Scriptsctivate
+# .venv\Scripts\activate
 # macOS / Linux
 # source .venv/bin/activate
 ```
